@@ -725,7 +725,7 @@ Joli.record.prototype = {
   },
 
   set: function(key, value) {
-    this.key = value;
+    this[key] = value;
     this._data[key] = value;
   }
 };
