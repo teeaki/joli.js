@@ -1,14 +1,15 @@
-var joli = {
+var Joli = {
   each: function(collection, iterator, bind) {
-    switch (joli.getType(collection)) {
+    switch (Joli.getType(collection)) {
       case "array":
         for (var i = 0, l = collection.length; i < l; i++) {
           iterator.call(bind, collection[i], i);
         }
         break;
       case "object":
+        var test = {};
         for (var property in collection) {
-          if (collection.hasOwnProperty(property)) {
+          if (collection[property] !== test[property]) {
             iterator.call(bind, collection[property], property);
           }
         }
@@ -53,15 +54,15 @@ var joli = {
     for (var i = 0, l = arguments.length; i < l; i++) {
       var object = arguments[i];
 
-      if (joli.getType(object) !== "object") {
+      if (Joli.getType(object) !== "object") {
         continue;
       }
 
       for (var prop in object) {
         var objectProp = object[prop], mergedProp = mergedObject[prop];
 
-        if (mergedProp && joli.getType(objectProp) === "object" && joli.getType(mergedProp) === "object") {
-          mergedObject[prop] = joli.merge(mergedProp, objectProp);
+        if (mergedProp && Joli.getType(objectProp) === "object" && Joli.getType(mergedProp) === "object") {
+          mergedObject[prop] = Joli.merge(mergedProp, objectProp);
         } else {
           mergedObject[prop] = objectProp;
         }
@@ -79,7 +80,7 @@ var joli = {
       this.options = {};
     }
 
-    var mergedOptions = joli.merge(defaults, options);
+    var mergedOptions = Joli.merge(defaults, options);
 
     for (var opt in defaults) {
       this.options[opt] = mergedOptions[opt];
@@ -93,15 +94,15 @@ var joli = {
       obj = {};
     }
 
-    joli.each(obj, function(val, key) {
+    Joli.each(obj, function(val, key) {
       var result = null;
 
-      switch (joli.getType(val)) {
+      switch (Joli.getType(val)) {
         case "object":
-          result = joli.toQueryString(val);
+          result = Joli.toQueryString(val);
           break;
         case "array":
-          result = joli.toQueryString(val);
+          result = Joli.toQueryString(val);
           break;
         default:
           result = encodeURIComponent(val);
@@ -116,17 +117,17 @@ var joli = {
   },
 
   typeValue: function(val) {
-    if (!joli.getType(val)) {
+    if (!Joli.getType(val)) {
       return "NULL";
     } else {
-      if (joli.getType(val) === "string") {
+      if (Joli.getType(val) === "string") {
         // escape single quotes and dollar signs.
         // quotes are escaped for SQLite
         val = val.replace(/'/g, "''");
         // dollar signs are escaped for use in calling str.replace in JazzRecord.replaceAndClean()
         val = val.replace(/\$/g, "$$$$");
         val = "'" + val + "'";
-      } else if (joli.getType(val) === "boolean") {
+      } else if (Joli.getType(val) === "boolean") {
         if (val) {
           return 1;
         } else {
@@ -143,13 +144,13 @@ var joli = {
 /**
  * Connection
  */
-joli.Connection = function(database) {
+Joli.Connection = function(database) {
   this.dbname = database;
   this.database = Titanium.Database.open(this.dbname);
   this.database.execute('PRAGMA read_uncommitted=true');
 };
 
-joli.Connection.prototype = {
+Joli.Connection.prototype = {
   execute: function(query) {
 //    Titanium.API.log('debug', query);
     return this.database.execute(query);
@@ -164,31 +165,31 @@ joli.Connection.prototype = {
 /**
  * Migration description
  */
-joli.migration = function(options) {
+Joli.migration = function(options) {
   var defaults = {
     tableName: 'migration'
   };
 
-  joli.setOptions.call(this, options, defaults);
+  Joli.setOptions.call(this, options, defaults);
   this.table = this.options.tableName;
 };
 
-joli.migration.prototype = {
+Joli.migration.prototype = {
   getVersion: function() {
-    var q = new joli.query().select().from(this.table).order('version desc');
+    var q = new Joli.query().select().from(this.table).order('version desc');
     var version = q.execute();
 
     if (version.length > 0) {
       return version[0].version;
     } else {
-      q = new joli.query().insertInto(this.table).values({ version: 0 });
+      q = new Joli.query().insertInto(this.table).values({ version: 0 });
       q.execute();
       return 0;
     }
   },
 
   setVersion: function(version) {
-    var q = new joli.query().update(this.table).set({ version:  version });
+    var q = new Joli.query().update(this.table).set({ version:  version });
     q.execute();
   }
 };
@@ -196,7 +197,7 @@ joli.migration.prototype = {
 /**
  * Model description
  */
-joli.model = function(options) {
+Joli.model = function(options) {
   var defaults = {
     table: '',
     columns: {},
@@ -204,29 +205,29 @@ joli.model = function(options) {
   };
 
   if (options.methods) {
-    joli.each(options.methods, function(method, name) {
+    Joli.each(options.methods, function(method, name) {
       this[name] = method;
     }, this);
   }
 
-  joli.setOptions.call(this, options, defaults);
+  Joli.setOptions.call(this, options, defaults);
   this.table = this.options.table;
 
-  if (!joli.models.has(this.table)) {
-    joli.models.set(this.table, this);
+  if (!Joli.models.has(this.table)) {
+    Joli.models.set(this.table, this);
   }
 };
 
-joli.model.prototype = {
+Joli.model.prototype = {
   all: function(constraints) {
-    var q = new joli.query().select().from(this.table);
+    var q = new Joli.query().select().from(this.table);
 
     if (!constraints) {
       constraints = {};
     }
 
     if (constraints.where) {
-      joli.each(constraints.where, function(value, field) {
+      Joli.each(constraints.where, function(value, field) {
         q.where(field, value);
       });
     }
@@ -243,14 +244,14 @@ joli.model.prototype = {
   },
 
   count: function(constraints) {
-    var q = new joli.query().count().from(this.table);
+    var q = new Joli.query().count().from(this.table);
 
     if (!constraints) {
       constraints = {};
     }
 
     if (constraints.where) {
-      joli.each(constraints.where, function(value, field) {
+      Joli.each(constraints.where, function(value, field) {
         q.where(field, value);
       });
     }
@@ -260,11 +261,11 @@ joli.model.prototype = {
 
   // no callbacks, more efficient
   deleteRecords: function(id) {
-    var q = new joli.query().destroy().from(this.table);
+    var q = new Joli.query().destroy().from(this.table);
 
-    if (joli.getType(id) === 'number') {
+    if (Joli.getType(id) === 'number') {
       q.where('id = ?', id);
-    } else if(joli.getType(id) === 'array') {
+    } else if(Joli.getType(id) === 'array') {
       q.whereIn('id', id);
     }
 
@@ -272,12 +273,12 @@ joli.model.prototype = {
   },
 
   exists: function(id) {
-    var count = new joli.query().count().from(this.table).where('id = ?', id).execute();
+    var count = new Joli.query().count().from(this.table).where('id = ?', id).execute();
     return (count > 0);
   },
 
   findBy: function(field, value) {
-    return new joli.query().select().from(this.table).where(field + ' = ?', value).execute();
+    return new Joli.query().select().from(this.table).where(field + ' = ?', value).execute();
   },
 
   findById: function(value) {
@@ -285,7 +286,7 @@ joli.model.prototype = {
   },
 
   findOneBy: function(field, value) {
-    var result = new joli.query().select().from(this.table).where(field + ' = ?', value).limit(1).execute();
+    var result = new Joli.query().select().from(this.table).where(field + ' = ?', value).limit(1).execute();
 
     if (result.length === 0) {
       return false;
@@ -309,11 +310,11 @@ joli.model.prototype = {
 
     var data = {};
 
-    joli.each(this.options.columns, function(colType, colName) {
+    Joli.each(this.options.columns, function(colType, colName) {
       data[colName] = (values[colName] === undefined) ? null : values[colName];
     });
 
-    var record = new joli.record(this).fromArray(data);
+    var record = new Joli.record(this).fromArray(data);
 
     record.isNew = function() {
       return true;
@@ -321,7 +322,7 @@ joli.model.prototype = {
 
     // add object methods
     if (this.options.objectMethods) {
-      joli.each(this.options.objectMethods, function(method, name) {
+      Joli.each(this.options.objectMethods, function(method, name) {
         record[name] = method;
       });
     }
@@ -334,7 +335,7 @@ joli.model.prototype = {
       return;
     }
 
-    var q = new joli.query();
+    var q = new Joli.query();
 
     if (data.originalData) {
       // existing record
@@ -348,12 +349,12 @@ joli.model.prototype = {
   }
 };
 
-joli.Models = function() {
+Joli.Models = function() {
   this.models = {};
-  this.migration = new joli.migration({ tableName: 'migration' });
+  this.migration = new Joli.migration({ tableName: 'migration' });
 };
 
-joli.Models.prototype = {
+Joli.Models.prototype = {
   get: function(table) {
     return this.models[table];
   },
@@ -367,26 +368,26 @@ joli.Models.prototype = {
   },
 
   initialize: function() {
-    joli.each(this.models, function(model, modelName) {
+    Joli.each(this.models, function(model, modelName) {
       var columns = [];
 
-      joli.each(model.options.columns, function(type, name) {
+      Joli.each(model.options.columns, function(type, name) {
         columns.push(name + ' ' + type);
       });
       var query = 'CREATE TABLE IF NOT EXISTS ' + modelName + ' (' + columns.join(', ') + ')';
-      joli.connection.execute(query);
+      Joli.connection.execute(query);
     });
   },
 
   migrate: function(version) {
     // create migration table
     var query = 'CREATE TABLE IF NOT EXISTS ' + this.migration.table + ' (version)';
-    joli.connection.execute(query);
+    Joli.connection.execute(query);
 
     if (this.migration.getVersion() < version) {
-      joli.each(this.models, function(model, modelName) {
+      Joli.each(this.models, function(model, modelName) {
         var query = 'DROP TABLE IF EXISTS ' + modelName;
-        joli.connection.execute(query);
+        Joli.connection.execute(query);
       });
 
       // insert migration
@@ -399,9 +400,9 @@ joli.Models.prototype = {
   }
 };
 
-joli.models = new joli.Models();
+Joli.models = new Joli.Models();
 
-joli.query = function() {
+Joli.query = function() {
   this.data = {
     from:            null,
     join:            [],
@@ -415,7 +416,7 @@ joli.query = function() {
   };
 };
 
-joli.query.prototype = {
+Joli.query.prototype = {
   count: function() {
     this.data.operation = 'count';
     return this;
@@ -435,16 +436,16 @@ joli.query.prototype = {
 
     switch (this.data.operation) {
       case 'count':
-        rows = joli.connection.execute(query);
+        rows = Joli.connection.execute(query);
         return this.getCount(rows);
       case 'insert_into':
-        joli.connection.execute(query);
-        return joli.connection.lastInsertRowId();
+        Joli.connection.execute(query);
+        return Joli.connection.lastInsertRowId();
       case 'select':
-        rows = joli.connection.execute(query);
+        rows = Joli.connection.execute(query);
         return this.hydrate(rows);
       default:
-        return joli.connection.execute(query);
+        return Joli.connection.execute(query);
     }
   },
 
@@ -482,7 +483,7 @@ joli.query.prototype = {
         var join = '';
 
         if (this.data.join.length > 0) {
-          joli.each(this.data.join, function(value, key) {
+          Joli.each(this.data.join, function(value, key) {
             join = join + ' left outer join ' + value[0] + ' ON ' + value[1] + '=' + value[2];
           });
         }
@@ -491,7 +492,7 @@ joli.query.prototype = {
       case 'update':
         return 'update ' + this.data.from + ' set ' + this.data.set.join(', ');
       default:
-        throw("Operation type Error. joli.query operation type must be an insert, a delete, a select or an update.");
+        throw("Operation type Error. Joli.query operation type must be an insert, a delete, a select or an update.");
     }
   },
 
@@ -518,7 +519,7 @@ joli.query.prototype = {
   },
 
   groupBy: function(group) {
-    if ('string' == joli.getType(group)) {
+    if ('string' == Joli.getType(group)) {
       group = [group];
     }
 
@@ -578,7 +579,7 @@ joli.query.prototype = {
   },
 
   order: function(order) {
-    if ('string' == joli.getType(order)) {
+    if ('string' == Joli.getType(order)) {
       order = [order];
     }
 
@@ -597,9 +598,9 @@ joli.query.prototype = {
   },
 
   set: function(values) {
-    joli.each(values, function(expression, value) {
+    Joli.each(values, function(expression, value) {
       if (-1 === value.indexOf('=')) {
-        this.data.set.push(value + ' = ' + joli.typeValue(expression));
+        this.data.set.push(value + ' = ' + Joli.typeValue(expression));
       } else {
         // some particular expression containing "="
         this.data.set.push(value);
@@ -615,9 +616,9 @@ joli.query.prototype = {
   },
 
   values: function(values) {
-    joli.each(values, function(expression, value) {
+    Joli.each(values, function(expression, value) {
       this.data.set.push(value);
-      this.data.values.push(joli.typeValue(expression));
+      this.data.values.push(Joli.typeValue(expression));
     }, this);
     return this;
   },
@@ -645,7 +646,7 @@ joli.query.prototype = {
   }
 };
 
-joli.record = function(table) {
+Joli.record = function(table) {
   this._options = {
     table: table,
     columns: table.getColumns()
@@ -653,7 +654,7 @@ joli.record = function(table) {
   this._data = {};
 };
 
-joli.record.prototype = {
+Joli.record.prototype = {
   destroy: function() {
     if (!this.id) {
       throw("Unsaved record cannot be destroyed");
@@ -675,7 +676,7 @@ joli.record.prototype = {
       };
     }
 
-    joli.each(this._options.columns, function(colType, colName) {
+    Joli.each(this._options.columns, function(colType, colName) {
       this[colName] = null;
       this[colName] = data[colName];
       this._data[colName] = null;
@@ -694,7 +695,7 @@ joli.record.prototype = {
       return false;
     }
 
-    return !(this.id && joli.toQueryString(this._data) === joli.toQueryString(this._originalData));
+    return !(this.id && Joli.toQueryString(this._data) === Joli.toQueryString(this._originalData));
   },
 
   save: function() {
@@ -710,7 +711,7 @@ joli.record.prototype = {
     // overwrite original data so it is no longer "dirty" OR so it is no longer new
     this._originalData = {};
 
-    joli.each(this._options.columns, function(colType, colName) {
+    Joli.each(this._options.columns, function(colType, colName) {
       this._originalData[colName] = this._data[colName];
     }, this);
 
