@@ -240,7 +240,7 @@ Joli.model.prototype = {
       q.limit(constraints.limit);
     }
 
-    return q.execute();
+    return this.toRecord(q.execute(), false);
   },
 
   count: function(constraints) {
@@ -278,7 +278,7 @@ Joli.model.prototype = {
   },
 
   findBy: function(field, value) {
-    return new Joli.query().select().from(this.table).where(field + ' = ?', value).execute();
+    return this.toRecord(new Joli.query().select().from(this.table).where(field + ' = ?', value).execute(), false);
   },
 
   findById: function(value) {
@@ -291,7 +291,7 @@ Joli.model.prototype = {
     if (result.length === 0) {
       return false;
     } else {
-      return result[0];
+      return this.toRecord(result[0], false);
     }
   },
 
@@ -314,20 +314,33 @@ Joli.model.prototype = {
       data[colName] = (values[colName] === undefined) ? null : values[colName];
     });
 
-    var record = new Joli.record(this).fromArray(data);
-
-    record.isNew = function() {
-      return true;
-    };
-
-    // add object methods
-    if (this.options.objectMethods) {
-      Joli.each(this.options.objectMethods, function(method, name) {
-        record[name] = method;
-      });
-    }
-
-    return record;
+    return this.toRecord(data, true);
+  },
+  
+  toRecord: function(data, isNew) {
+  	if(!data) {
+  		return data;
+  	}
+  	var self = this;
+  	switch(Joli.getType(data)) {
+  		case 'array':
+  			return data.map(function(object){
+  				return self.toRecord(object, isNew);
+  			});
+  		default:
+	  		var record = new Joli.record(self).fromArray(data);
+		    record.isNew = function() {
+		      return isNew;
+		    };
+		
+		    // add object methods
+		    if (self.options.objectMethods) {
+		      Joli.each(self.options.objectMethods, function(method, name) {
+		        record[name] = method;
+		      });
+		    }
+			return record;
+	}
   },
 
   save: function(data) {
@@ -433,7 +446,7 @@ Joli.query.prototype = {
 
   executeQuery: function(query) {
     var rows;
-
+	console && console.debug && console.debug(query); 
     switch (this.data.operation) {
       case 'count':
         rows = Joli.connection.execute(query);
